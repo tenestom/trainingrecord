@@ -44,6 +44,7 @@ const inlineSetTemplate = document.getElementById('inline-set-template');
 
 let currentUser = null;
 let mostFrequentLake = '';
+let allSessions = [];
 
 // Initialization
 async function init() {
@@ -120,8 +121,6 @@ function showError(msg) {
 
 // Dashboard Handlers
 async function loadSessions() {
-  sessionsList.innerHTML = '<p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>';
-  
   const { data, error } = await supabaseClient
     .from('sessions')
     .select('*, sets(*)')
@@ -131,6 +130,8 @@ async function loadSessions() {
     sessionsList.innerHTML = `<p class="text-red-500 text-center mt-10">Error loading sessions: ${error.message}</p>`;
     return;
   }
+
+  allSessions = data;
 
   if (data.length === 0) {
     sessionsList.innerHTML = '<p class="text-gray-500 text-center mt-10">No sessions yet. Click + to add one!</p>';
@@ -202,9 +203,12 @@ async function loadSessions() {
             resultStr = `<span class="ml-2 text-purple-600 font-medium">${p} pts</span>`;
           }
           return `
-          <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm border border-gray-100">
+          <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm border border-gray-100 set-row" data-id="${set.id}">
             <div><span class="font-semibold text-gray-700">${set.discipline}</span> <span class="text-xs text-gray-500">(⭐ ${set.satisfaction})</span>${resultStr}</div>
-            <button class="text-red-400 hover:text-red-600 delete-set-btn px-2" data-id="${set.id}">🗑️</button>
+            <div class="flex items-center space-x-1">
+              <button class="text-blue-400 hover:text-blue-600 edit-set-btn px-1" data-id="${set.id}">✏️</button>
+              <button class="text-red-400 hover:text-red-600 delete-set-btn px-1" data-id="${set.id}">🗑️</button>
+            </div>
           </div>
         `}).join('')}
       </div>
@@ -235,33 +239,70 @@ sessionsList.addEventListener('click', async (e) => {
     }
   }
 
+  const editSetBtn = e.target.closest('.edit-set-btn');
   const addInlineSetBtn = e.target.closest('.add-inline-set-btn');
-  if (addInlineSetBtn) {
-    const sessionId = addInlineSetBtn.dataset.id;
-    const sessionCard = addInlineSetBtn.closest('.bg-white');
-    
-    // Check if form already exists
-    if (sessionCard.querySelector('.inline-set-form')) return;
+
+  if (editSetBtn || addInlineSetBtn) {
+    const isEdit = !!editSetBtn;
+    const setId = isEdit ? editSetBtn.dataset.id : null;
+    const sessionId = isEdit ? null : addInlineSetBtn.dataset.id;
+    const targetElement = isEdit ? editSetBtn.closest('.set-row') : addInlineSetBtn.closest('.bg-white');
+
+    let foundSet = null;
+    if (isEdit) {
+      for (const session of allSessions) {
+        foundSet = session.sets.find(s => s.id === setId);
+        if (foundSet) break;
+      }
+      if (!foundSet) return;
+    }
+
+    // Check if form already exists in this context
+    if (!isEdit && targetElement.querySelector('.inline-set-form')) return;
 
     const node = inlineSetTemplate.content.cloneNode(true);
     const form = node.querySelector('.inline-set-form');
     const resultContainer = node.querySelector('.inline-result-container');
     const disciplineInput = node.querySelector('.inline-discipline');
 
-    const renderInlineResultFields = (discipline) => {
+    const renderInlineResultFields = (discipline, initialData = null) => {
       resultContainer.innerHTML = '';
       if (discipline === 'Slalom') resultContainer.appendChild(slalomResultTemplate.content.cloneNode(true));
       else if (discipline === 'Jump') resultContainer.appendChild(jumpResultTemplate.content.cloneNode(true));
       else if (discipline === 'Trick') resultContainer.appendChild(trickResultTemplate.content.cloneNode(true));
       
-      // Make them smaller for inline
       resultContainer.querySelectorAll('input, select').forEach(el => el.classList.add('text-xs', 'py-0.5'));
+      
+      if (initialData) {
+        if (discipline === 'Slalom') {
+          const b = form.querySelector('.slalom-buoys');
+          const l = form.querySelector('.slalom-length');
+          const s = form.querySelector('.slalom-speed');
+          if (b) b.value = initialData.buoys ?? '';
+          if (l) l.value = initialData.line_length ?? '';
+          if (s) s.value = initialData.speed ?? '';
+        } else if (discipline === 'Jump') {
+          const d = form.querySelector('.jump-distance');
+          if (d) d.value = initialData.distance_meters ?? '';
+        } else if (discipline === 'Trick') {
+          const p = form.querySelector('.trick-points');
+          if (p) p.value = initialData.points ?? '';
+        }
+      }
     };
 
-    renderInlineResultFields('Slalom');
+    if (isEdit) {
+      disciplineInput.value = foundSet.discipline;
+      form.querySelector('.inline-satisfaction').value = foundSet.satisfaction;
+      form.querySelector('.inline-notes').value = foundSet.notes || '';
+      renderInlineResultFields(foundSet.discipline, foundSet.result_data);
+    } else {
+      renderInlineResultFields('Slalom');
+    }
+
     disciplineInput.addEventListener('input', (e) => renderInlineResultFields(e.target.value));
 
-    node.querySelector('.cancel-inline-set').addEventListener('click', () => form.remove());
+    node.querySelector('.cancel-inline-set').addEventListener('click', () => isEdit ? loadSessions() : form.remove());
     node.querySelector('.save-inline-set').addEventListener('click', async () => {
       const discipline = disciplineInput.value;
       let result_data = null;
@@ -279,20 +320,30 @@ sessionsList.addEventListener('click', async (e) => {
         if (p) result_data = { points: parseInt(p, 10) };
       }
 
-      const { error } = await supabaseClient.from('sets').insert([{
-        session_id: sessionId,
+      const payload = {
         discipline,
         satisfaction: parseInt(form.querySelector('.inline-satisfaction').value, 10),
         notes: form.querySelector('.inline-notes').value,
         result_type: result_data ? discipline.toLowerCase() : null,
         result_data
-      }]);
+      };
 
-      if (error) alert('Error saving set: ' + error.message);
+      let result;
+      if (isEdit) {
+        result = await supabaseClient.from('sets').update(payload).eq('id', setId);
+      } else {
+        result = await supabaseClient.from('sets').insert([{ ...payload, session_id: sessionId }]);
+      }
+
+      if (result.error) alert('Error saving set: ' + result.error.message);
       else loadSessions();
     });
 
-    sessionCard.appendChild(node);
+    if (isEdit) {
+      targetElement.replaceWith(form);
+    } else {
+      targetElement.appendChild(node);
+    }
   }
 });
 
