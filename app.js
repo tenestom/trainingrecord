@@ -41,6 +41,7 @@ const jumpResultTemplate = document.getElementById('jump-result-template');
 const trickResultTemplate = document.getElementById('trick-result-template');
 
 let currentUser = null;
+let mostFrequentLake = '';
 
 // Initialization
 async function init() {
@@ -151,6 +152,10 @@ async function loadSessions() {
     .sort((a, b) => b.count - a.count)
     .map(lake => lake.display);
 
+  if (sortedLakes.length > 0) {
+    mostFrequentLake = sortedLakes[0];
+  }
+
   const lakeSuggestions = document.getElementById('lake-suggestions');
   if (lakeSuggestions) {
     lakeSuggestions.innerHTML = sortedLakes.map(lake => `<option value="${lake}"></option>`).join('');
@@ -229,7 +234,7 @@ sessionsList.addEventListener('click', async (e) => {
 // Session Form Handlers
 newSessionBtn.addEventListener('click', () => {
   document.getElementById('session-date').valueAsDate = new Date();
-  document.getElementById('session-lake').value = '';
+  document.getElementById('session-lake').value = mostFrequentLake;
   document.getElementById('session-notes').value = '';
   setsContainer.innerHTML = '';
   addSet(); // add one empty set by default
