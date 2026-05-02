@@ -101,16 +101,39 @@ signupBtn.addEventListener('click', async (e) => {
   e.preventDefault();
   if(!authForm.checkValidity()) return authForm.reportValidity();
   
-  const { error } = await supabaseClient.auth.signUp({
-    email: emailInput.value,
-    password: passwordInput.value
+  signupBtn.disabled = true;
+  signupBtn.textContent = 'Signing up...';
+
+  const email = emailInput.value;
+  const password = passwordInput.value;
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: email,
+    password: password
   });
   
-  if (error) showError(error.message);
-  else {
-    showError("Signup successful! Please log in (or check email if confirmation is required).");
+  if (error) {
+    showError(error.message);
+    signupBtn.disabled = false;
+    signupBtn.textContent = 'Sign Up';
+  } else {
+    showError("Account created successfully!");
     authError.classList.remove('text-red-500');
     authError.classList.add('text-green-500');
+    
+    // If no session was automatically created, sign them in manually
+    if (!data.session) {
+      showError("Account created! Logging you in...");
+      const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      if (loginError) {
+        showError("Account created, but auto-login failed. Please log in manually.");
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Sign Up';
+      }
+    }
   }
 });
 
