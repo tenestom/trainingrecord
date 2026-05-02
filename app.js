@@ -134,6 +134,28 @@ async function loadSessions() {
     return;
   }
 
+  // Populate Lake Suggestions
+  const lakeCounts = {};
+  data.forEach(session => {
+    if (session.lake) {
+      const normalizedLake = session.lake.trim();
+      const key = normalizedLake.toLowerCase();
+      if (!lakeCounts[key]) {
+        lakeCounts[key] = { count: 0, display: normalizedLake };
+      }
+      lakeCounts[key].count++;
+    }
+  });
+
+  const sortedLakes = Object.values(lakeCounts)
+    .sort((a, b) => b.count - a.count)
+    .map(lake => lake.display);
+
+  const lakeSuggestions = document.getElementById('lake-suggestions');
+  if (lakeSuggestions) {
+    lakeSuggestions.innerHTML = sortedLakes.map(lake => `<option value="${lake}"></option>`).join('');
+  }
+
   sessionsList.innerHTML = '';
   data.forEach(session => {
     const avgSat = session.sets.length > 0 
