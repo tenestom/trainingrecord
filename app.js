@@ -39,6 +39,8 @@ const setTemplate = document.getElementById('set-template');
 const slalomResultTemplate = document.getElementById('slalom-result-template');
 const jumpResultTemplate = document.getElementById('jump-result-template');
 const trickResultTemplate = document.getElementById('trick-result-template');
+const quickLogBtn = document.getElementById('quick-log-btn');
+const inlineSetTemplate = document.getElementById('inline-set-template');
 
 let currentUser = null;
 let mostFrequentLake = '';
@@ -177,7 +179,10 @@ async function loadSessions() {
       <p class="text-sm text-gray-600 mb-1">📍 ${session.lake}</p>
       <div class="flex justify-between items-center">
         <p class="text-xs text-gray-500">⭐ Avg Satisfaction: ${avgSat}</p>
-        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
+        <div class="flex items-center space-x-2">
+          <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
+          <button class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 add-inline-set-btn" data-id="${session.id}">+ Add Set</button>
+        </div>
       </div>
       ${session.notes ? `<p class="text-sm text-gray-700 mt-2 italic">"${session.notes}"</p>` : ''}
       
@@ -229,6 +234,66 @@ sessionsList.addEventListener('click', async (e) => {
       else loadSessions(); // refresh list
     }
   }
+
+  const addInlineSetBtn = e.target.closest('.add-inline-set-btn');
+  if (addInlineSetBtn) {
+    const sessionId = addInlineSetBtn.dataset.id;
+    const sessionCard = addInlineSetBtn.closest('.bg-white');
+    
+    // Check if form already exists
+    if (sessionCard.querySelector('.inline-set-form')) return;
+
+    const node = inlineSetTemplate.content.cloneNode(true);
+    const form = node.querySelector('.inline-set-form');
+    const resultContainer = node.querySelector('.inline-result-container');
+    const disciplineInput = node.querySelector('.inline-discipline');
+
+    const renderInlineResultFields = (discipline) => {
+      resultContainer.innerHTML = '';
+      if (discipline === 'Slalom') resultContainer.appendChild(slalomResultTemplate.content.cloneNode(true));
+      else if (discipline === 'Jump') resultContainer.appendChild(jumpResultTemplate.content.cloneNode(true));
+      else if (discipline === 'Trick') resultContainer.appendChild(trickResultTemplate.content.cloneNode(true));
+      
+      // Make them smaller for inline
+      resultContainer.querySelectorAll('input, select').forEach(el => el.classList.add('text-xs', 'py-0.5'));
+    };
+
+    renderInlineResultFields('Slalom');
+    disciplineInput.addEventListener('input', (e) => renderInlineResultFields(e.target.value));
+
+    node.querySelector('.cancel-inline-set').addEventListener('click', () => form.remove());
+    node.querySelector('.save-inline-set').addEventListener('click', async () => {
+      const discipline = disciplineInput.value;
+      let result_data = null;
+
+      if (discipline === 'Slalom') {
+        const b = form.querySelector('.slalom-buoys')?.value;
+        const l = form.querySelector('.slalom-length')?.value;
+        const s = form.querySelector('.slalom-speed')?.value;
+        if (b || l || s) result_data = { buoys: b ? parseFloat(b) : null, line_length: l ? parseFloat(l) : null, speed: s ? parseFloat(s) : null };
+      } else if (discipline === 'Jump') {
+        const d = form.querySelector('.jump-distance')?.value;
+        if (d) result_data = { distance_meters: parseFloat(d) };
+      } else if (discipline === 'Trick') {
+        const p = form.querySelector('.trick-points')?.value;
+        if (p) result_data = { points: parseInt(p, 10) };
+      }
+
+      const { error } = await supabaseClient.from('sets').insert([{
+        session_id: sessionId,
+        discipline,
+        satisfaction: parseInt(form.querySelector('.inline-satisfaction').value, 10),
+        notes: form.querySelector('.inline-notes').value,
+        result_type: result_data ? discipline.toLowerCase() : null,
+        result_data
+      }]);
+
+      if (error) alert('Error saving set: ' + error.message);
+      else loadSessions();
+    });
+
+    sessionCard.appendChild(node);
+  }
 });
 
 // Session Form Handlers
@@ -244,6 +309,50 @@ newSessionBtn.addEventListener('click', () => {
 backToDashboardBtn.addEventListener('click', () => {
   showView(dashboardView);
 });
+
+quickLogBtn.addEventListener('click', quickLogSession);
+
+async function quickLogSession() {
+  quickLogBtn.disabled = true;
+  quickLogBtn.textContent = '⚡ Logging...';
+
+  try {
+    const defaults = await getLastSetDefaults();
+    
+    // 1. Create Session
+    const { data: session, error: sErr } = await supabaseClient
+      .from('sessions')
+      .insert([{ 
+        date: new Date().toISOString().split('T')[0], 
+        lake: mostFrequentLake || 'Unknown Lake',
+        user_id: currentUser.id 
+      }])
+      .select()
+      .single();
+
+    if (sErr) throw sErr;
+
+    // 2. Create Initial Set
+    const { error: setErr } = await supabaseClient
+      .from('sets')
+      .insert([{
+        session_id: session.id,
+        discipline: defaults.discipline,
+        satisfaction: defaults.satisfaction,
+        result_type: defaults.result_type,
+        result_data: defaults.result_data
+      }]);
+
+    if (setErr) throw setErr;
+
+    await loadSessions();
+  } catch (err) {
+    alert('Quick Log Failed: ' + err.message);
+  } finally {
+    quickLogBtn.disabled = false;
+    quickLogBtn.textContent = '⚡ Quick Log';
+  }
+}
 
 addSetBtn.addEventListener('click', () => addSet());
 
@@ -263,6 +372,25 @@ async function getLastSlalomResult() {
     }
   }
   return null;
+}
+
+async function getLastSetDefaults() {
+  const { data } = await supabaseClient
+    .from('sessions')
+    .select('sets(*)')
+    .order('created_at', { ascending: false }) // Use created_at if available, otherwise we might need a better way. 
+    // Wait, sessions table HAS created_at.
+    .limit(5);
+
+  if (data && data.length > 0) {
+    for (const session of data) {
+      if (session.sets && session.sets.length > 0) {
+        // Return the first set of the most recent session
+        return session.sets[0];
+      }
+    }
+  }
+  return { discipline: 'Slalom', satisfaction: 3, result_data: null };
 }
 
 async function addSet() {

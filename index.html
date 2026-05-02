@@ -46,11 +46,16 @@
       <div id="dashboard-view" class="hidden">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-lg font-semibold text-gray-800">My Sessions</h2>
-          <button id="new-session-btn" class="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+          <div class="flex space-x-2">
+            <button id="quick-log-btn" class="bg-yellow-500 text-white px-3 py-2 rounded-full shadow-lg hover:bg-yellow-600 transition flex items-center text-sm font-bold">
+              <span class="mr-1">⚡</span> Quick Log
+            </button>
+            <button id="new-session-btn" class="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="sessions-list" class="space-y-3 pb-6">
           <p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>
@@ -189,6 +194,22 @@
     <div class="bg-purple-50 p-2 rounded border border-purple-100">
       <label class="block text-xs text-purple-700">Points</label>
       <input type="number" step="10" class="trick-points mt-1 block w-full px-2 py-1 text-sm border border-gray-300 rounded shadow-sm" placeholder="e.g. 850">
+    </div>
+  </template>
+
+  <!-- Inline Set Template (Dashboard) -->
+  <template id="inline-set-template">
+    <div class="inline-set-form mt-2 border-t border-gray-100 pt-2">
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <input type="text" list="disciplines" class="inline-discipline text-xs border border-gray-300 rounded px-2 py-1" placeholder="Discipline" value="Slalom">
+        <input type="number" min="0" max="5" class="inline-satisfaction text-xs border border-gray-300 rounded px-2 py-1" placeholder="Satisfaction (0-5)" value="3">
+      </div>
+      <div class="inline-result-container mb-2"></div>
+      <textarea class="inline-notes text-xs border border-gray-300 rounded px-2 py-1 w-full" placeholder="Notes (optional)"></textarea>
+      <div class="flex justify-end space-x-2 mt-1">
+        <button class="cancel-inline-set text-xs text-gray-500 px-2 py-1">Cancel</button>
+        <button class="save-inline-set text-xs bg-blue-600 text-white px-2 py-1 rounded">Save Set</button>
+      </div>
     </div>
   </template>
 
