@@ -5,7 +5,7 @@ const SUPABASE_URL = 'https://gzqbseefmyvytiewsjup.supabase.co';
 // The Publishable key (sb_publishable_...) is required for client-side applications 
 // to safely utilize RLS (Row Level Security). The Publishable key is safe to be 
 // public because RLS protects your data.
-const SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_aviePZLzSniwS7lEOBSvZQ_DcATZJmc';
 
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -35,10 +35,6 @@ let currentUser = null;
 
 // Initialization
 async function init() {
-  if (SUPABASE_PUBLISHABLE_KEY === 'YOUR_SUPABASE_PUBLISHABLE_KEY_HERE') {
-    alert("Please replace YOUR_SUPABASE_PUBLISHABLE_KEY_HERE in app.js with your actual Supabase Publishable key (sb_publishable_...) to test the app.");
-  }
-
   const { data: { session } } = await supabase.auth.getSession();
   updateAuthState(session);
 
