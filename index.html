@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Ski Training Diary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Main App Logic -->
+  <script src="app.js" defer></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans min-h-screen">
+  <!-- Container -->
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col relative pb-20">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
+      <h1 class="text-xl font-bold tracking-wide">Ski Diary</h1>
+      <button id="logout-btn" class="hidden text-sm bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded">Logout</button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="flex-grow p-4 overflow-y-auto">
+      
+      <!-- AUTH VIEW -->
+      <div id="auth-view" class="mt-10 hidden">
+        <h2 class="text-2xl font-semibold text-center mb-6 text-gray-800">Welcome Back</h2>
+        <form id="auth-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" id="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" id="password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          <div id="auth-error" class="text-red-500 text-sm hidden"></div>
+          <div class="flex gap-4 pt-2">
+            <button type="submit" id="login-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Log In</button>
+            <button type="button" id="signup-btn" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Sign Up</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- DASHBOARD VIEW -->
+      <div id="dashboard-view" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">My Sessions</h2>
+          <button id="new-session-btn" class="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+        <div id="sessions-list" class="space-y-3 pb-6">
+          <p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>
+        </div>
+      </div>
+
+      <!-- CREATE/EDIT SESSION VIEW -->
+      <div id="session-form-view" class="hidden">
+        <div class="flex items-center mb-4">
+          <button id="back-to-dashboard-btn" class="text-blue-600 mr-2 hover:bg-blue-50 p-1 rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 class="text-lg font-semibold text-gray-800">New Session</h2>
+        </div>
+        
+        <form id="session-form" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Date</label>
+              <input type="date" id="session-date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Lake</label>
+              <input type="text" id="session-lake" required placeholder="e.g. Sunset Lake" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+            <textarea id="session-notes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+          </div>
+
+          <div class="border-t border-gray-200 pt-4 mt-6">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-md font-semibold text-gray-800">Sets</h3>
+              <button type="button" id="add-set-btn" class="text-sm text-blue-600 font-medium hover:text-blue-800">+ Add Set</button>
+            </div>
+            <div id="sets-container" class="space-y-4">
+              <!-- Sets will be added here -->
+            </div>
+          </div>
+
+          <!-- Sticky save button -->
+          <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 flex justify-center max-w-md mx-auto z-10">
+            <button type="submit" id="save-session-btn" class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700">Save Session</button>
+          </div>
+        </form>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Set Template (Hidden) -->
+  <template id="set-template">
+    <div class="set-item bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
+      <button type="button" class="remove-set-btn absolute top-2 right-2 text-gray-400 hover:text-red-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+      <div class="grid grid-cols-2 gap-3 mb-2 pr-6">
+        <div>
+          <label class="block text-xs text-gray-500">Discipline</label>
+          <input type="text" list="disciplines" class="set-discipline mt-1 block w-full px-2 py-1 text-sm border border-gray-300 rounded shadow-sm" required placeholder="e.g. Slalom">
+          <datalist id="disciplines">
+            <option value="Slalom"></option>
+            <option value="Trick"></option>
+            <option value="Jump"></option>
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500">Satisfaction (0-5)</label>
+          <input type="number" min="0" max="5" class="set-satisfaction mt-1 block w-full px-2 py-1 text-sm border border-gray-300 rounded shadow-sm" required value="3">
+        </div>
+      </div>
+      <div>
+        <input type="text" placeholder="Notes (optional)" class="set-notes block w-full px-2 py-1 text-sm border border-gray-300 rounded shadow-sm">
+      </div>
+    </div>
+  </template>
+
+</body>
+</html>
