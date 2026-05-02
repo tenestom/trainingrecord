@@ -1,13 +1,13 @@
 // app.js
 const SUPABASE_URL = 'https://gzqbseefmyvytiewsjup.supabase.co';
 
-// WARNING: Do NOT use the service_role (secret) key in the frontend!
-// The anon key is required for client-side applications to safely utilize 
-// RLS (Row Level Security). The anon key is safe to be public because RLS 
-// protects your data.
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+// WARNING: Do NOT use the Secret key (sb_secret_...) in the frontend!
+// The Publishable key (sb_publishable_...) is required for client-side applications 
+// to safely utilize RLS (Row Level Security). The Publishable key is safe to be 
+// public because RLS protects your data.
+const SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // DOM Elements
 const authView = document.getElementById('auth-view');
@@ -35,8 +35,8 @@ let currentUser = null;
 
 // Initialization
 async function init() {
-  if (SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
-    alert("Please replace YOUR_SUPABASE_ANON_KEY_HERE in app.js with your actual Supabase anon key to test the app.");
+  if (SUPABASE_PUBLISHABLE_KEY === 'YOUR_SUPABASE_PUBLISHABLE_KEY_HERE') {
+    alert("Please replace YOUR_SUPABASE_PUBLISHABLE_KEY_HERE in app.js with your actual Supabase Publishable key (sb_publishable_...) to test the app.");
   }
 
   const { data: { session } } = await supabase.auth.getSession();
