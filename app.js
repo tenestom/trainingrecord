@@ -36,6 +36,9 @@ const sessionForm = document.getElementById('session-form');
 const setsContainer = document.getElementById('sets-container');
 const addSetBtn = document.getElementById('add-set-btn');
 const setTemplate = document.getElementById('set-template');
+const slalomResultTemplate = document.getElementById('slalom-result-template');
+const jumpResultTemplate = document.getElementById('jump-result-template');
+const trickResultTemplate = document.getElementById('trick-result-template');
 
 let currentUser = null;
 
@@ -152,12 +155,21 @@ async function loadSessions() {
       ${session.notes ? `<p class="text-sm text-gray-700 mt-2 italic">"${session.notes}"</p>` : ''}
       
       <div class="mt-3 border-t border-gray-100 pt-2 space-y-2">
-        ${session.sets.map(set => `
+        ${session.sets.map(set => {
+          let resultStr = '';
+          if (set.result_data && set.discipline === 'Slalom') {
+            resultStr = `<span class="ml-2 text-blue-600 font-medium">${set.result_data.buoys} @ ${set.result_data.line_length}m, ${set.result_data.speed}kph</span>`;
+          } else if (set.result_data && set.discipline === 'Jump') {
+            resultStr = `<span class="ml-2 text-green-600 font-medium">${set.result_data.distance_meters}m</span>`;
+          } else if (set.result_data && set.discipline === 'Trick') {
+            resultStr = `<span class="ml-2 text-purple-600 font-medium">${set.result_data.points} pts</span>`;
+          }
+          return `
           <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm border border-gray-100">
-            <div><span class="font-semibold text-gray-700">${set.discipline}</span> <span class="text-xs text-gray-500">(⭐ ${set.satisfaction})</span></div>
+            <div><span class="font-semibold text-gray-700">${set.discipline}</span> <span class="text-xs text-gray-500">(⭐ ${set.satisfaction})</span>${resultStr}</div>
             <button class="text-red-400 hover:text-red-600 delete-set-btn px-2" data-id="${set.id}">🗑️</button>
           </div>
-        `).join('')}
+        `}).join('')}
       </div>
     `;
     sessionsList.appendChild(div);
@@ -201,17 +213,65 @@ backToDashboardBtn.addEventListener('click', () => {
   showView(dashboardView);
 });
 
-addSetBtn.addEventListener('click', addSet);
+addSetBtn.addEventListener('click', () => addSet());
 
-function addSet() {
+async function getLastSlalomResult() {
+  const { data } = await supabaseClient
+    .from('sessions')
+    .select('sets(result_data, discipline)')
+    .order('date', { ascending: false })
+    .limit(10);
+
+  if (data) {
+    for (const session of data) {
+      if (session.sets) {
+        const slalomSet = session.sets.find(s => s.discipline === 'Slalom' && s.result_data);
+        if (slalomSet) return slalomSet.result_data;
+      }
+    }
+  }
+  return null;
+}
+
+async function addSet() {
   const node = setTemplate.content.cloneNode(true);
   const setItem = node.querySelector('.set-item');
+  const disciplineInput = node.querySelector('.set-discipline');
+  const resultContainer = node.querySelector('.result-fields-container');
   
   node.querySelector('.remove-set-btn').addEventListener('click', () => {
     setItem.remove();
   });
+
+  const renderResultFields = async (discipline) => {
+    resultContainer.innerHTML = '';
+    if (discipline === 'Slalom') {
+      const slalomNode = slalomResultTemplate.content.cloneNode(true);
+      resultContainer.appendChild(slalomNode);
+      // Try to pre-fill
+      const lastResult = await getLastSlalomResult();
+      if (lastResult) {
+        setItem.querySelector('.slalom-buoys').value = lastResult.buoys ?? '';
+        setItem.querySelector('.slalom-length').value = lastResult.line_length ?? '';
+        setItem.querySelector('.slalom-speed').value = lastResult.speed ?? '';
+      }
+    } else if (discipline === 'Jump') {
+      const jumpNode = jumpResultTemplate.content.cloneNode(true);
+      resultContainer.appendChild(jumpNode);
+    } else if (discipline === 'Trick') {
+      const trickNode = trickResultTemplate.content.cloneNode(true);
+      resultContainer.appendChild(trickNode);
+    }
+  };
+
+  // Initial render (defaults to Slalom in template)
+  renderResultFields('Slalom');
+
+  disciplineInput.addEventListener('input', (e) => {
+    renderResultFields(e.target.value);
+  });
   
-  setsContainer.appendChild(node);
+  setsContainer.appendChild(setItem); // append the actual element, not the fragment
 }
 
 sessionForm.addEventListener('submit', async (e) => {
@@ -231,10 +291,34 @@ sessionForm.addEventListener('submit', async (e) => {
   const setsData = [];
   
   setElements.forEach(el => {
+    const discipline = el.querySelector('.set-discipline').value;
+    let result_data = null;
+
+    if (discipline === 'Slalom') {
+      const buoys = parseFloat(el.querySelector('.slalom-buoys')?.value);
+      const length = parseFloat(el.querySelector('.slalom-length')?.value);
+      const speed = parseFloat(el.querySelector('.slalom-speed')?.value);
+      if (!isNaN(buoys) && !isNaN(length) && !isNaN(speed)) {
+        result_data = { buoys, line_length: length, speed };
+      }
+    } else if (discipline === 'Jump') {
+      const distance = parseFloat(el.querySelector('.jump-distance')?.value);
+      if (!isNaN(distance)) {
+        result_data = { distance_meters: distance };
+      }
+    } else if (discipline === 'Trick') {
+      const points = parseInt(el.querySelector('.trick-points')?.value, 10);
+      if (!isNaN(points)) {
+        result_data = { points };
+      }
+    }
+
     setsData.push({
-      discipline: el.querySelector('.set-discipline').value,
+      discipline: discipline,
       satisfaction: parseInt(el.querySelector('.set-satisfaction').value, 10),
-      notes: el.querySelector('.set-notes').value
+      notes: el.querySelector('.set-notes').value,
+      result_type: result_data ? discipline.toLowerCase() : null,
+      result_data: result_data
     });
   });
 

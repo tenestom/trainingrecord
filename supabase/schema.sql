@@ -21,7 +21,9 @@ CREATE TABLE sets (
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     discipline TEXT NOT NULL,
     satisfaction INTEGER CHECK (satisfaction >= 0 AND satisfaction <= 5),
-    notes TEXT
+    notes TEXT,
+    result_type TEXT,
+    result_data JSONB
 );
 
 -- Enable Row Level Security (RLS)
