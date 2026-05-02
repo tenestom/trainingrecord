@@ -142,15 +142,50 @@ async function loadSessions() {
     div.innerHTML = `
       <div class="flex justify-between items-center mb-2">
         <h3 class="font-bold text-gray-800">${session.date}</h3>
-        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
+        <button class="text-xs text-red-500 hover:text-red-700 delete-session-btn font-medium" data-id="${session.id}">Delete Session</button>
       </div>
       <p class="text-sm text-gray-600 mb-1">📍 ${session.lake}</p>
-      <p class="text-xs text-gray-500">⭐ Avg Satisfaction: ${avgSat}</p>
+      <div class="flex justify-between items-center">
+        <p class="text-xs text-gray-500">⭐ Avg Satisfaction: ${avgSat}</p>
+        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
+      </div>
       ${session.notes ? `<p class="text-sm text-gray-700 mt-2 italic">"${session.notes}"</p>` : ''}
+      
+      <div class="mt-3 border-t border-gray-100 pt-2 space-y-2">
+        ${session.sets.map(set => `
+          <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm border border-gray-100">
+            <div><span class="font-semibold text-gray-700">${set.discipline}</span> <span class="text-xs text-gray-500">(⭐ ${set.satisfaction})</span></div>
+            <button class="text-red-400 hover:text-red-600 delete-set-btn px-2" data-id="${set.id}">🗑️</button>
+          </div>
+        `).join('')}
+      </div>
     `;
     sessionsList.appendChild(div);
   });
 }
+
+sessionsList.addEventListener('click', async (e) => {
+  const deleteSessionBtn = e.target.closest('.delete-session-btn');
+  const deleteSetBtn = e.target.closest('.delete-set-btn');
+
+  if (deleteSessionBtn) {
+    if (confirm('Are you sure you want to delete this entire session and all its sets?')) {
+      const sessionId = deleteSessionBtn.dataset.id;
+      const { error } = await supabaseClient.from('sessions').delete().eq('id', sessionId);
+      if (error) alert('Error deleting session: ' + error.message);
+      else loadSessions(); // refresh list
+    }
+  }
+
+  if (deleteSetBtn) {
+    if (confirm('Delete this set?')) {
+      const setId = deleteSetBtn.dataset.id;
+      const { error } = await supabaseClient.from('sets').delete().eq('id', setId);
+      if (error) alert('Error deleting set: ' + error.message);
+      else loadSessions(); // refresh list
+    }
+  }
+});
 
 // Session Form Handlers
 newSessionBtn.addEventListener('click', () => {
