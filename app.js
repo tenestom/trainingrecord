@@ -7,7 +7,13 @@ const SUPABASE_URL = 'https://gzqbseefmyvytiewsjup.supabase.co';
 // public because RLS protects your data.
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_aviePZLzSniwS7lEOBSvZQ_DcATZJmc';
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 
 // DOM Elements
 const authView = document.getElementById('auth-view');
@@ -38,8 +44,10 @@ async function init() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   updateAuthState(session);
 
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    updateAuthState(session);
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      updateAuthState(session);
+    }
   });
 }
 
