@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://gzqbseefmyvytiewsjup.supabase.co';
 // public because RLS protects your data.
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_aviePZLzSniwS7lEOBSvZQ_DcATZJmc';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // DOM Elements
 const authView = document.getElementById('auth-view');
@@ -35,10 +35,10 @@ let currentUser = null;
 
 // Initialization
 async function init() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   updateAuthState(session);
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
     updateAuthState(session);
   });
 }
@@ -68,7 +68,7 @@ loginBtn.addEventListener('click', async (e) => {
   e.preventDefault();
   if(!authForm.checkValidity()) return authForm.reportValidity();
   
-  const { error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabaseClient.auth.signInWithPassword({
     email: emailInput.value,
     password: passwordInput.value
   });
@@ -81,7 +81,7 @@ signupBtn.addEventListener('click', async (e) => {
   e.preventDefault();
   if(!authForm.checkValidity()) return authForm.reportValidity();
   
-  const { error } = await supabase.auth.signUp({
+  const { error } = await supabaseClient.auth.signUp({
     email: emailInput.value,
     password: passwordInput.value
   });
@@ -95,7 +95,7 @@ signupBtn.addEventListener('click', async (e) => {
 });
 
 logoutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
 });
 
 function showError(msg) {
@@ -108,7 +108,7 @@ function showError(msg) {
 async function loadSessions() {
   sessionsList.innerHTML = '<p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>';
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('sessions')
     .select('*, sets(*)')
     .order('date', { ascending: false });
@@ -196,15 +196,13 @@ sessionForm.addEventListener('submit', async (e) => {
   });
 
   // 1. Insert Session
-  const { data: sessionData, error: sessionError } = await supabase
+  const { data: sessionData, error: sessionError } = await supabaseClient
     .from('sessions')
     .insert([{ date, lake, notes, user_id: currentUser.id }])
     .select()
     .single();
 
   if (sessionError) {
-    // If user_id is required and not defaulting, we might need to include it
-    // Wait, the schema I provided does not default user_id. Let's fix that in schema or include it here.
     alert('Error saving session: ' + sessionError.message);
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save Session';
@@ -215,7 +213,7 @@ sessionForm.addEventListener('submit', async (e) => {
   // 2. Insert Sets if any
   if (setsData.length > 0) {
     const setsToInsert = setsData.map(s => ({ ...s, session_id: sessionData.id }));
-    const { error: setsError } = await supabase
+    const { error: setsError } = await supabaseClient
       .from('sets')
       .insert(setsToInsert);
 
