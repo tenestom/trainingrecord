@@ -180,11 +180,16 @@ async function loadSessions() {
         ${session.sets.map(set => {
           let resultStr = '';
           if (set.result_data && set.discipline === 'Slalom') {
-            resultStr = `<span class="ml-2 text-blue-600 font-medium">${set.result_data.buoys} @ ${set.result_data.line_length}m, ${set.result_data.speed}kph</span>`;
+            const b = set.result_data.buoys ?? '?';
+            const l = set.result_data.line_length ?? '?';
+            const s = set.result_data.speed ?? '?';
+            resultStr = `<span class="ml-2 text-blue-600 font-medium">${b} @ ${l}m, ${s}kph</span>`;
           } else if (set.result_data && set.discipline === 'Jump') {
-            resultStr = `<span class="ml-2 text-green-600 font-medium">${set.result_data.distance_meters}m</span>`;
+            const d = set.result_data.distance_meters ?? '?';
+            resultStr = `<span class="ml-2 text-green-600 font-medium">${d}m</span>`;
           } else if (set.result_data && set.discipline === 'Trick') {
-            resultStr = `<span class="ml-2 text-purple-600 font-medium">${set.result_data.points} pts</span>`;
+            const p = set.result_data.points ?? '?';
+            resultStr = `<span class="ml-2 text-purple-600 font-medium">${p} pts</span>`;
           }
           return `
           <div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm border border-gray-100">
@@ -317,21 +322,29 @@ sessionForm.addEventListener('submit', async (e) => {
     let result_data = null;
 
     if (discipline === 'Slalom') {
-      const buoys = parseFloat(el.querySelector('.slalom-buoys')?.value);
-      const length = parseFloat(el.querySelector('.slalom-length')?.value);
-      const speed = parseFloat(el.querySelector('.slalom-speed')?.value);
-      if (!isNaN(buoys) && !isNaN(length) && !isNaN(speed)) {
-        result_data = { buoys, line_length: length, speed };
+      const buoysStr = el.querySelector('.slalom-buoys')?.value;
+      const lengthStr = el.querySelector('.slalom-length')?.value;
+      const speedStr = el.querySelector('.slalom-speed')?.value;
+      
+      const buoys = buoysStr ? parseFloat(buoysStr) : null;
+      const length = lengthStr ? parseFloat(lengthStr) : null;
+      const speed = speedStr ? parseFloat(speedStr) : null;
+      
+      if (buoys !== null || length !== null || speed !== null) {
+        result_data = {};
+        if (buoys !== null) result_data.buoys = buoys;
+        if (length !== null) result_data.line_length = length;
+        if (speed !== null) result_data.speed = speed;
       }
     } else if (discipline === 'Jump') {
-      const distance = parseFloat(el.querySelector('.jump-distance')?.value);
-      if (!isNaN(distance)) {
-        result_data = { distance_meters: distance };
+      const distanceStr = el.querySelector('.jump-distance')?.value;
+      if (distanceStr) {
+        result_data = { distance_meters: parseFloat(distanceStr) };
       }
     } else if (discipline === 'Trick') {
-      const points = parseInt(el.querySelector('.trick-points')?.value, 10);
-      if (!isNaN(points)) {
-        result_data = { points };
+      const pointsStr = el.querySelector('.trick-points')?.value;
+      if (pointsStr) {
+        result_data = { points: parseInt(pointsStr, 10) };
       }
     }
 
