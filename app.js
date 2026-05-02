@@ -41,6 +41,11 @@ const jumpResultTemplate = document.getElementById('jump-result-template');
 const trickResultTemplate = document.getElementById('trick-result-template');
 const quickLogBtn = document.getElementById('quick-log-btn');
 const inlineSetTemplate = document.getElementById('inline-set-template');
+const showSessionsTab = document.getElementById('show-sessions-tab');
+const showStatsTab = document.getElementById('show-stats-tab');
+const sessionsContainer = document.getElementById('sessions-container');
+const statsContainer = document.getElementById('stats-container');
+const statsContent = document.getElementById('stats-content');
 
 let currentUser = null;
 let mostFrequentLake = '';
@@ -107,6 +112,26 @@ signupBtn.addEventListener('click', async (e) => {
     authError.classList.remove('text-red-500');
     authError.classList.add('text-green-500');
   }
+});
+
+// Tab Switching
+showSessionsTab?.addEventListener('click', () => {
+  showSessionsTab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+  showSessionsTab.classList.remove('text-gray-500');
+  showStatsTab.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+  showStatsTab.classList.add('text-gray-500');
+  sessionsContainer.classList.remove('hidden');
+  statsContainer.classList.add('hidden');
+});
+
+showStatsTab?.addEventListener('click', () => {
+  showStatsTab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+  showStatsTab.classList.remove('text-gray-500');
+  showSessionsTab.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+  showSessionsTab.classList.add('text-gray-500');
+  sessionsContainer.classList.add('hidden');
+  statsContainer.classList.remove('hidden');
+  renderStats();
 });
 
 logoutBtn.addEventListener('click', async () => {
@@ -574,6 +599,119 @@ sessionForm.addEventListener('submit', async (e) => {
   showView(dashboardView);
   loadSessions();
 });
+
+function renderStats() {
+  if (!allSessions || allSessions.length === 0) {
+    statsContent.innerHTML = '<p class="text-gray-500 text-center mt-10">No data available for stats yet.</p>';
+    return;
+  }
+
+  // 1. Aggregation
+  let totalSessions = allSessions.length;
+  let totalSets = 0;
+  let totalSatisfaction = 0;
+  let satisfactionCount = 0;
+
+  const disciplines = { Slalom: 0, Jump: 0, Trick: 0, Other: 0 };
+  
+  let bestSlalom = { buoys: -1, length: 19, speed: -1 }; 
+  let bestJump = 0;
+  let bestTrick = 0;
+
+  allSessions.forEach(session => {
+    totalSets += session.sets.length;
+    session.sets.forEach(set => {
+      // Discipline count
+      const disc = set.discipline || 'Other';
+      if (disciplines[disc] !== undefined) disciplines[disc]++;
+      else disciplines.Other++;
+
+      // Satisfaction
+      if (set.satisfaction !== null && set.satisfaction !== undefined) {
+        totalSatisfaction += set.satisfaction;
+        satisfactionCount++;
+      }
+
+      // Best results
+      if (set.result_data) {
+        if (set.discipline === 'Slalom') {
+          const d = set.result_data;
+          // Individually best metrics
+          if (d.buoys !== null && d.buoys > bestSlalom.buoys) bestSlalom.buoys = d.buoys;
+          if (d.line_length !== null && d.line_length < bestSlalom.length) bestSlalom.length = d.line_length;
+          if (d.speed !== null && d.speed > bestSlalom.speed) bestSlalom.speed = d.speed;
+        } else if (set.discipline === 'Jump') {
+          if (set.result_data.distance_meters > bestJump) bestJump = set.result_data.distance_meters;
+        } else if (set.discipline === 'Trick') {
+          if (set.result_data.points > bestTrick) bestTrick = set.result_data.points;
+        }
+      }
+    });
+  });
+
+  const avgSat = satisfactionCount > 0 ? (totalSatisfaction / satisfactionCount).toFixed(1) : 'No ratings yet';
+
+  // 2. UI Generation
+  statsContent.innerHTML = `
+    <!-- Training Volume -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white p-4 rounded-lg shadow border border-gray-100 text-center">
+        <p class="text-xs text-gray-500 uppercase font-bold">Sessions</p>
+        <p class="text-2xl font-bold text-gray-800">${totalSessions}</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow border border-gray-100 text-center">
+        <p class="text-xs text-gray-500 uppercase font-bold">Sets</p>
+        <p class="text-2xl font-bold text-gray-800">${totalSets}</p>
+      </div>
+    </div>
+
+    <!-- Best Performance -->
+    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
+      <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase flex items-center">
+        <span class="mr-2">🏆</span> Best Performance
+      </h3>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center border-b border-gray-50 pb-2">
+          <span class="text-sm text-gray-600">Slalom</span>
+          <span class="text-sm font-bold text-blue-600 text-right">
+            ${bestSlalom.buoys >= 0 ? `${bestSlalom.buoys} @ ${bestSlalom.length}m @ ${bestSlalom.speed}kph` : 'No results yet'}
+          </span>
+        </div>
+        <div class="flex justify-between items-center border-b border-gray-50 pb-2">
+          <span class="text-sm text-gray-600">Jump</span>
+          <span class="text-sm font-bold text-green-600">
+            ${bestJump > 0 ? `${bestJump}m` : 'No results yet'}
+          </span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-600">Tricks</span>
+          <span class="text-sm font-bold text-purple-600">
+            ${bestTrick > 0 ? `${bestTrick} pts` : 'No results yet'}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discipline Breakdown -->
+    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
+      <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase">📈 Discipline Breakdown</h3>
+      <div class="grid grid-cols-2 gap-2">
+        ${Object.entries(disciplines).map(([name, count]) => `
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">${name}</span>
+            <span class="font-bold">${count}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Avg Satisfaction -->
+    <div class="bg-blue-600 p-4 rounded-lg shadow text-center text-white">
+      <p class="text-xs uppercase font-bold opacity-80">Average Satisfaction</p>
+      <p class="text-3xl font-bold">${avgSat}${satisfactionCount > 0 ? ' ⭐' : ''}</p>
+    </div>
+  `;
+}
 
 // Start app
 init();

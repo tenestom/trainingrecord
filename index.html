@@ -57,8 +57,23 @@
             </button>
           </div>
         </div>
-        <div id="sessions-list" class="space-y-3 pb-6">
-          <p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>
+
+        <!-- Dashboard Navigation Tabs -->
+        <div class="flex border-b border-gray-200 mb-4">
+          <button id="show-sessions-tab" class="flex-1 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 transition">Sessions</button>
+          <button id="show-stats-tab" class="flex-1 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition">Stats</button>
+        </div>
+
+        <div id="sessions-container">
+          <div id="sessions-list" class="space-y-3 pb-6">
+            <p class="text-gray-500 text-center mt-10" id="sessions-loading">Loading sessions...</p>
+          </div>
+        </div>
+
+        <div id="stats-container" class="hidden pb-6">
+          <div id="stats-content" class="space-y-4">
+            <!-- Stats will be injected here -->
+          </div>
         </div>
       </div>
 
