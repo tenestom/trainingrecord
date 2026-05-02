@@ -46,6 +46,7 @@ const showStatsTab = document.getElementById('show-stats-tab');
 const sessionsContainer = document.getElementById('sessions-container');
 const statsContainer = document.getElementById('stats-container');
 const statsContent = document.getElementById('stats-content');
+const inlineSessionTemplate = document.getElementById('inline-session-template');
 
 let currentUser = null;
 let mostFrequentLake = '';
@@ -219,21 +220,27 @@ async function loadSessions() {
       : 'N/A';
 
     const div = document.createElement('div');
-    div.className = 'bg-white p-4 rounded-lg shadow border border-gray-100';
+    div.className = 'bg-white p-4 rounded-lg shadow border border-gray-100 session-card';
     div.innerHTML = `
-      <div class="flex justify-between items-center mb-2">
-        <h3 class="font-bold text-gray-800">${session.date}</h3>
-        <button class="text-xs text-red-500 hover:text-red-700 delete-session-btn font-medium" data-id="${session.id}">Delete Session</button>
-      </div>
-      <p class="text-sm text-gray-600 mb-1">📍 ${session.lake}</p>
-      <div class="flex justify-between items-center">
-        <p class="text-xs text-gray-500">⭐ Avg Satisfaction: ${avgSat}</p>
-        <div class="flex items-center space-x-2">
-          <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
-          <button class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 add-inline-set-btn" data-id="${session.id}">+ Add Set</button>
+      <div class="session-display">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-bold text-gray-800">${session.date}</h3>
+          <div class="flex space-x-2">
+            <button class="text-xs text-blue-500 hover:text-blue-700 edit-session-btn font-medium" data-id="${session.id}">Edit</button>
+            <button class="text-xs text-red-500 hover:text-red-700 delete-session-btn font-medium" data-id="${session.id}">Delete</button>
+          </div>
         </div>
+        <p class="text-sm text-gray-600 mb-1">📍 ${session.lake}</p>
+        <div class="flex justify-between items-center">
+          <p class="text-xs text-gray-500">⭐ Avg Satisfaction: ${avgSat}</p>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">${session.sets.length} sets</span>
+            <button class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 add-inline-set-btn" data-id="${session.id}">+ Add Set</button>
+          </div>
+        </div>
+        ${session.notes ? `<p class="text-sm text-gray-700 mt-2 italic">"${session.notes}"</p>` : ''}
       </div>
-      ${session.notes ? `<p class="text-sm text-gray-700 mt-2 italic">"${session.notes}"</p>` : ''}
+      <div class="session-edit-container hidden"></div>
       
       <div class="mt-3 border-t border-gray-100 pt-2 space-y-2">
         ${session.sets.map(set => {
@@ -276,6 +283,49 @@ sessionsList.addEventListener('click', async (e) => {
       if (error) alert('Error deleting session: ' + error.message);
       else loadSessions(); // refresh list
     }
+  }
+
+  const editSessionBtn = e.target.closest('.edit-session-btn');
+  if (editSessionBtn) {
+    const sessionId = editSessionBtn.dataset.id;
+    const card = editSessionBtn.closest('.session-card');
+    const display = card.querySelector('.session-display');
+    const editContainer = card.querySelector('.session-edit-container');
+    
+    const session = allSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    const node = inlineSessionTemplate.content.cloneNode(true);
+    const form = node.querySelector('.inline-session-form');
+    
+    form.querySelector('.inline-session-date').value = session.date;
+    form.querySelector('.inline-session-lake').value = session.lake;
+    form.querySelector('.inline-session-notes').value = session.notes || '';
+    
+    node.querySelector('.cancel-inline-session').addEventListener('click', () => {
+      display.classList.remove('hidden');
+      editContainer.classList.add('hidden');
+      editContainer.innerHTML = '';
+    });
+    
+    node.querySelector('.save-inline-session').addEventListener('click', async () => {
+      const date = form.querySelector('.inline-session-date').value;
+      const lake = form.querySelector('.inline-session-lake').value;
+      const notes = form.querySelector('.inline-session-notes').value;
+      
+      const { error } = await supabaseClient
+        .from('sessions')
+        .update({ date, lake, notes })
+        .eq('id', sessionId);
+        
+      if (error) alert('Error updating session: ' + error.message);
+      else loadSessions();
+    });
+    
+    editContainer.innerHTML = '';
+    editContainer.appendChild(node);
+    display.classList.add('hidden');
+    editContainer.classList.remove('hidden');
   }
 
   if (deleteSetBtn) {

@@ -228,5 +228,20 @@
     </div>
   </template>
 
+  <!-- Inline Session Template -->
+  <template id="inline-session-template">
+    <div class="inline-session-form space-y-2">
+      <div class="flex justify-between items-center">
+        <input type="date" class="inline-session-date text-sm font-bold border border-gray-300 rounded px-2 py-1">
+        <div class="flex space-x-2">
+          <button class="cancel-inline-session text-xs text-gray-500 font-medium">Cancel</button>
+          <button class="save-inline-session text-xs text-blue-600 font-bold">Save</button>
+        </div>
+      </div>
+      <input type="text" list="lake-suggestions" class="inline-session-lake text-sm w-full border border-gray-300 rounded px-2 py-1" placeholder="Lake">
+      <textarea class="inline-session-notes text-sm w-full border border-gray-300 rounded px-2 py-1" placeholder="Notes (optional)"></textarea>
+    </div>
+  </template>
+
 </body>
 </html>
